@@ -63,7 +63,14 @@ app.layout = html.Div([
     ], style={'width': '100%', 'display': 'block', 'marginBottom': '20px'}),  # Устанавливаем ширину на 100%
 
     # Диаграмма успеваемости студентов по предметам
-    dcc.Graph(id='performance-chart')
+    dcc.Graph(id='performance-chart'),
+
+    # Два отступа перед круговой диаграммой
+    html.Br(),
+    html.Br(),
+
+    # Круговая диаграмма количества оценок (3, 4, 5) по всем предметам
+    dcc.Graph(id='average-score-chart')
 ], style={'width': '100%', 'height': '100vh'})  # Устанавливаем ширину и высоту на весь экран
 
 
@@ -86,7 +93,8 @@ def generate_table(dataframe):
 # Изначально отображаем полный список студентов и диаграмму
 @app.callback(
     [Output('grades-table', 'children'),
-     Output('performance-chart', 'figure')],
+     Output('performance-chart', 'figure'),
+     Output('average-score-chart', 'figure')],
     [Input('fio-dropdown', 'value'),
      Input('subject-dropdown-table', 'value'),
      Input('subject-dropdown-chart', 'value')]
@@ -106,17 +114,28 @@ def update_table(selected_fio, selected_subject_table, selected_subject_chart):
     performance_data = data[data['Предмет'] == selected_subject_chart]
 
     if not performance_data.empty:
-        fig = px.bar(performance_data,
-                     x='ФИО',
-                     y='Оценка',  # Предполагаем, что у вас есть колонка "Оценка"
-                     color='Предмет',
-                     title=f"Успеваемость студентов по предмету: {selected_subject_chart}")
+        fig_performance = px.bar(performance_data,
+                                 x='ФИО',
+                                 y='Оценка',
+                                 color='Предмет',
+                                 title=f"Успеваемость студентов по предмету: {selected_subject_chart}")
 
-        fig.update_layout(title_x=0.5)  # Центрируем заголовок диаграммы
+        fig_performance.update_layout(title_x=0.5)  # Центрируем заголовок диаграммы
     else:
-        fig = px.bar(title="Нет данных для отображения")
+        fig_performance = px.bar(title="Нет данных для отображения")
 
-    return table, fig
+    # Круговая диаграмма количества оценок (3, 4, 5) по всем предметам
+    count_grades = data[data['Оценка'].isin([3, 4, 5])].groupby('Оценка')['Предмет'].count().reset_index()
+
+    fig_average_score = px.pie(count_grades,
+                               values='Предмет',
+                               names='Оценка',
+                               title="Количество оценок (3, 4, 5) по всем предметам",
+                               color_discrete_sequence=['blue', 'green', 'red'])  # Установка цветов для оценок
+
+    fig_average_score.update_layout(title_x=0.5)  # Центрируем заголовок круговой диаграммы
+
+    return table, fig_performance, fig_average_score
 
 
 # Запуск сервера
